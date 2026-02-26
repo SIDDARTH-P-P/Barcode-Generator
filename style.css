@@ -16,6 +16,39 @@ body {
     margin: 0;
 }
 
+.mode-container {
+    display: flex;
+    gap: 10px;
+    background: #eceff4;
+    padding: 5px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #d8dee9;
+}
+
+.mode-btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    background: transparent;
+    color: #4c566a;
+    box-shadow: none;
+}
+
+.mode-btn.active {
+    background: #fff;
+    color: #2e3440;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.mode-btn:hover:not(.active) {
+    background: #e5e9f0;
+}
+
 h1 {
     margin-bottom: 15px;
     text-align: center;
