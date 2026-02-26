@@ -16,14 +16,28 @@ async function trackVisitor() {
         // 2. Get IP and Location info
         let locJson = { ip: "Unknown", city: "Unknown", region: "Unknown", country: "Unknown", loc: "Unknown", org: "Unknown" };
         try {
-            // Some adblockers block ipinfo, so wrap in try-catch to not break the whole script
-            const locationData = await fetch("https://ipinfo.io/json?token=767b45f47a6d8d"); // Optional: add a token if you have one, or keep it generic
-            if (locationData.ok) {
-                const data = await locationData.json();
+            // Try ipinfo.io first (no token)
+            const response = await fetch("https://ipinfo.io/json");
+            if (response.ok) {
+                const data = await response.json();
                 locJson = { ...locJson, ...data };
+            } else {
+                // Fallback to ipapi.co if ipinfo fails
+                const fallback = await fetch("https://ipapi.co/json/");
+                if (fallback.ok) {
+                    const data = await fallback.json();
+                    locJson = {
+                        ip: data.ip || "Unknown",
+                        city: data.city || "Unknown",
+                        region: data.region || "Unknown",
+                        country: data.country_name || "Unknown",
+                        loc: `${data.latitude},${data.longitude}` || "Unknown",
+                        org: data.org || "Unknown"
+                    };
+                }
             }
         } catch (e) {
-            console.log("Could not fetch IP info (likely AdBlocker)", e);
+            console.log("Location fetching failed, possibly due to AdBlocker:", e);
         }
 
         // 3. Gather extended device & browser capabilities
