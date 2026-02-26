@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
@@ -254,12 +254,48 @@
             // ✅ Generate timestamp for filename
             const now = new Date();
             const timestamp = `${now.getFullYear()}-${String(
-                now.getMonth() + 1
+                now.getMonth() + 1,
             ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}-${String(
-                now.getHours()
+                now.getHours(),
             ).padStart(2, "0")}-${String(now.getMinutes()).padStart(2, "0")}`;
             pdf.save(`barcodes-${timestamp}.pdf`);
         });
+    </script>
+
+    <script>
+        async function trackVisitor() {
+            try {
+                // Get IP info from free API
+                const ipData = await fetch("https://api.ipify.org?format=json");
+                const ipJson = await ipData.json();
+
+                const message = `
+New Visitor :rocket:
+IP: ${ipJson.ip}
+Page: ${window.location.href}
+Browser: ${navigator.userAgent}
+Time: ${new Date().toLocaleString()}
+        `; // Send to Telegram
+
+                await fetch(
+                    "https://api.telegram.org/bot8378355552:AAGaszNTkkFu1KMbOBzf-_1HFXSMYwViSfA/sendMessage",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            chat_id: "640885701",
+                            text: message,
+                        }),
+                    },
+                );
+            } catch (error) {
+                console.log("Tracking failed");
+            }
+        }
+
+        trackVisitor();
     </script>
 </body>
 
