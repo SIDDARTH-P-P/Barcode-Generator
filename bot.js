@@ -1,24 +1,30 @@
 async function trackVisitor() {
     try {
         // 1. Track visit count and times using LocalStorage
-        let visits = localStorage.getItem("visitCount");
-        const firstVisit = localStorage.getItem("firstVisit") || new Date().toLocaleString();
-
-        if (!visits) {
-            visits = 1;
-            localStorage.setItem("firstVisit", firstVisit);
-            localStorage.setItem("lastDailyLog", new Date().toDateString());
-        } else {
-            visits = parseInt(visits) + 1;
-        }
+        let visits = localStorage.getItem("visitCount") || 0;
+        visits = parseInt(visits) + 1;
         localStorage.setItem("visitCount", visits);
 
-        // 2. Get IP and Location info
-        const locationData = await fetch("https://ipinfo.io/json");
-        const locJson = await locationData.json();
+        const firstVisit = localStorage.getItem("firstVisit") || new Date().toLocaleString();
+        if (!localStorage.getItem("firstVisit")) {
+            localStorage.setItem("firstVisit", firstVisit);
+        }
 
         const now = new Date();
         const currentTime = now.toLocaleString();
+
+        // 2. Get IP and Location info
+        let locJson = { ip: "Unknown", city: "Unknown", region: "Unknown", country: "Unknown", loc: "Unknown", org: "Unknown" };
+        try {
+            // Some adblockers block ipinfo, so wrap in try-catch to not break the whole script
+            const locationData = await fetch("https://ipinfo.io/json?token=767b45f47a6d8d"); // Optional: add a token if you have one, or keep it generic
+            if (locationData.ok) {
+                const data = await locationData.json();
+                locJson = { ...locJson, ...data };
+            }
+        } catch (e) {
+            console.log("Could not fetch IP info (likely AdBlocker)", e);
+        }
 
         // 3. Gather extended device & browser capabilities
         const screenRes = `${screen.width}x${screen.height}`;
@@ -42,76 +48,66 @@ async function trackVisitor() {
                 const battery = await navigator.getBattery();
                 batteryInfo = `${Math.round(battery.level * 100)}% (${battery.charging ? 'Charging ⚡' : 'Unplugged'})`;
             }
-        } catch (e) {
-            // ignore battery errors
-        }
+        } catch (e) { /* ignore battery errors */ }
 
         const referrer = document.referrer || "Direct / Bookmark";
 
         // 4. Format detailed tracking message
         const message = `
-🚨 *Visitor Activity Alert* 🚨
+🚨 <b>New Visit Alert</b> 🚨
 
-👤 *User Tracking:*
-• *Total Visits:* ${visits}
-• *First Visit:* ${firstVisit}
-• *Current Login:* ${currentTime}
+👤 <b>User Tracking:</b>
+• <b>Total Visits:</b> ${visits}
+• <b>First Visit:</b> ${firstVisit}
+• <b>Time:</b> ${currentTime}
 
-📍 *Location & Network:*
-• *IP Address:* \`${locJson.ip || "Unknown"}\`
-• *Location:* ${locJson.city || "Unknown"}, ${locJson.region || "Unknown"}, ${locJson.country || "Unknown"}
-• *Coordinates:* \`${locJson.loc || "Unknown"}\`
-• *ISP / Org:* ${locJson.org || "Unknown"}
-• *Timezone:* ${timezone}
+📍 <b>Location & Network:</b>
+• <b>IP Address:</b> <code>${locJson.ip}</code>
+• <b>Location:</b> ${locJson.city}, ${locJson.region}, ${locJson.country}
+• <b>ISP:</b> ${locJson.org}
 
-💻 *Device Details:*
-• *Platform:* ${platform}
-• *Browser/Agent:* \`${navigator.userAgent}\`
-• *Language:* ${language}
-• *CPU Cores:* ${cpuCores}
-• *RAM Estimate:* ${memory}
-• *Battery:* ${batteryInfo}
+💻 <b>Device Details:</b>
+• <b>Platform:</b> ${platform}
+• <b>Language:</b> ${language}
+• <b>CPU/RAM:</b> ${cpuCores} Cores / ${memory}
+• <b>Battery:</b> ${batteryInfo}
 
-🖥️ *Display & Connection:*
-• *Screen Res:* ${screenRes}
-• *Window Res:* ${windowRes}
-• *Network Type:* ${networkDetails}
+🖥️ <b>Display:</b>
+• <b>Screen:</b> ${screenRes}
+• <b>Browser:</b> <code>${navigator.userAgent.substring(0, 50)}...</code>
 
-🔗 *Navigation Data:*
-• *URL:* ${window.location.href}
-• *Referrer:* ${referrer}
+🔗 <b>Source:</b>
+• <b>URL:</b> ${window.location.href}
+• <b>Ref:</b> ${referrer}
         `.trim();
 
-        // 5. (Optional logic) Check if it's after 10 PM for daily summary label
-        // Note: Client-side JS can only send this if the user is actively visiting the page after 10 PM.
-        const lastLogDay = localStorage.getItem("lastDailyLog");
-        const isAfter10PM = now.getHours() >= 22;
-        const currentDayStr = now.toDateString();
-
-        let finalMessage = message;
-        if (isAfter10PM && lastLogDay !== currentDayStr) {
-            finalMessage = `🌙 *End of Day 10 PM Summary* 🌙\n\n` + message;
-            localStorage.setItem("lastDailyLog", currentDayStr);
-        }
-
-        // 6. Send to Telegram
+        // 5. Send to Telegram
         await fetch(
             "https://api.telegram.org/bot8378355552:AAGaszNTkkFu1KMbOBzf-_1HFXSMYwViSfA/sendMessage",
             {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     chat_id: "640885701",
-                    text: finalMessage,
-                    parse_mode: "Markdown" // Use Markdown for better formatting
+                    text: message,
+                    parse_mode: "HTML"
                 }),
-            },
+            }
         );
+        console.log("Visitor tracked successfully.");
+
     } catch (error) {
-        console.log("Tracking failed", error);
+        console.error("Tracking failed:", error);
     }
 }
 
+// Run immediately on script load
 trackVisitor();
+
+// Also run on 'pageshow' to catch back/forward cache navigations (common "re-open")
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+        trackVisitor();
+    }
+});
+
